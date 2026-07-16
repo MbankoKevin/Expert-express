@@ -1,0 +1,45 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+# Explicitly grant necessary permissions for security scanning
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out code with full history for TruffleHog
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      # Step 2: Run TruffleHog Secret Scanner
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      # Step 3: Run Semgrep SAST 
+      - name: Semgrep SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          # Standardized to a simple, clean, comma-separated string
+          config: "p/security-audit p/php p/javascript p/owasp-top-ten"
+        env:
+          # Semgrep will run in offline/local-only mode if this secret is empty, 
+          # preventing a crash.
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
