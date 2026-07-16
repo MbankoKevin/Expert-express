@@ -25,12 +25,14 @@ jobs:
           fetch-depth: 0 
 
       # Step 2: Run TruffleHog Secret Scanner
+     # Step 2: Run TruffleHog Secret Scanner
       - name: TruffleHog Secret Scan
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          # Dynamically choose the base commit depending on push vs pull request
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.after }}
           extra_args: --only-verified
 
       # Step 3: Run Semgrep SAST 
